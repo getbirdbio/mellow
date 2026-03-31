@@ -2,7 +2,8 @@
 """
 Birthday SMS System
 Checks Loopy Loyalty for customers whose birthday is today,
-sends them a happy birthday SMS via Twilio with a free coffee offer.
+adds 12 stamps to their loyalty card (triggering a free coffee reward),
+and sends them a happy birthday SMS via Twilio.
 
 Runs daily at 6 AM SAST via GitHub Actions.
 """
@@ -28,11 +29,15 @@ TWILIO_ACCOUNT_SID = os.environ["TWILIO_ACCOUNT_SID"]
 TWILIO_AUTH_TOKEN = os.environ["TWILIO_AUTH_TOKEN"]
 TWILIO_FROM_NUMBER = os.environ["TWILIO_FROM_NUMBER"]
 
+# Number of stamps for a free coffee reward
+BIRTHDAY_STAMPS = 12
+
 # SMS message template - {name} will be replaced with the customer's first name
 BIRTHDAY_MESSAGE = (
     "Happy Birthday, {name}! 🎂🎉 "
-    "To celebrate your special day, we'd love to treat you to a FREE coffee on us! "
-    "Just show this message at any Bird Coffee location today. "
+    "To celebrate your special day, we've added a FREE coffee reward to your "
+    "Bird Coffee loyalty card! Just open your card in your wallet and show it "
+    "at any Bird Coffee location to redeem. "
     "Enjoy your day! ☕ - The Bird Coffee Team"
 )
 
@@ -63,10 +68,14 @@ def get_loopy_token():
     return jwt.encode(payload, LOOPY_API_SECRET, algorithm="HS256")
 
 
+def get_loopy_headers():
+    """Return authenticated headers for Loopy Loyalty API."""
+    return {"Authorization": get_loopy_token(), "Content-Type": "application/json"}
+
+
 def fetch_all_cards():
     """Fetch all cards from the campaign, paginated."""
-    token = get_loopy_token()
-    headers = {"Authorization": token, "Content-Type": "application/json"}
+    headers = get_loopy_headers()
     url = f"{LOOPY_BASE_URL}/card/cid/{LOOPY_CAMPAIGN_ID}"
 
     all_cards = []
@@ -115,6 +124,18 @@ def get_birthday_customers(cards):
     return birthday_cards
 
 
+def add_birthday_stamps(card_id):
+    """Add 12 stamps to a card, triggering the free coffee reward."""
+    headers = get_loopy_headers()
+    url = f"{LOOPY_BASE_URL}/card/cid/{card_id}/addStamps/{BIRTHDAY_STAMPS}"
+
+    resp = requests.post(url, headers=headers, json={}, timeout=30)
+    resp.raise_for_status()
+
+    log.info("Added %d stamps to card %s", BIRTHDAY_STAMPS, card_id)
+    return resp.json()
+
+
 # --------------- Twilio SMS ---------------
 
 
@@ -148,20 +169,24 @@ def main():
     failed = 0
 
     for card in birthday_cards:
-        details = card.get("customerDetails", {})
+        details = card.get("customerDetails") or {}
         name = details.get("Name", "")
         phone = details.get("Contact Number", "")
+        card_id = card.get("id")
 
         if not phone:
-            log.warning("No phone number for card %s (%s), skipping", card.get("id"), name)
+            log.warning("No phone number for card %s (%s), skipping", card_id, name)
             failed += 1
             continue
 
         try:
+            # Add 12 stamps to trigger free coffee reward
+            add_birthday_stamps(card_id)
+            # Send birthday SMS
             send_birthday_sms(phone, name)
             sent += 1
         except Exception as e:
-            log.error("Failed to send SMS to %s (%s): %s", phone, name, e)
+            log.error("Failed to process birthday for %s (%s): %s", phone, name, e)
             failed += 1
 
     log.info("=== Done: %d sent, %d failed, %d total birthdays ===", sent, failed, len(birthday_cards))
