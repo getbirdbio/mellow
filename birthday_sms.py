@@ -99,7 +99,7 @@ def get_birthday_customers(cards):
 
     birthday_cards = []
     for card in cards:
-        details = card.get("customerDetails", {})
+        details = card.get("customerDetails") or {}
         birthday_str = details.get("Birthday")
         if not birthday_str:
             continue
