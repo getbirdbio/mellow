@@ -125,15 +125,27 @@ def get_birthday_customers(cards):
 
 
 def add_birthday_stamps(card_id):
-    """Add 12 stamps to a card, triggering the free coffee reward."""
+    """Add 12 stamps to a card, triggering the free coffee reward.
+
+    Retries up to 3 times with increasing timeout on failure.
+    """
     headers = get_loopy_headers()
     url = f"{LOOPY_BASE_URL}/card/cid/{card_id}/addStamps/{BIRTHDAY_STAMPS}"
 
-    resp = requests.post(url, headers=headers, json={}, timeout=30)
-    resp.raise_for_status()
+    last_error = None
+    for attempt in range(3):
+        try:
+            timeout = 60 * (attempt + 1)  # 60s, 120s, 180s
+            resp = requests.post(url, headers=headers, json={}, timeout=timeout)
+            resp.raise_for_status()
+            log.info("Added %d stamps to card %s", BIRTHDAY_STAMPS, card_id)
+            return resp.json()
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            log.warning("Attempt %d failed for card %s: %s", attempt + 1, card_id, e)
+            time.sleep(5 * (attempt + 1))
 
-    log.info("Added %d stamps to card %s", BIRTHDAY_STAMPS, card_id)
-    return resp.json()
+    raise last_error
 
 
 # --------------- Twilio SMS ---------------
