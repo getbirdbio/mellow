@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Birthday SMS System
+Birthday WhatsApp System
 Checks Loopy Loyalty for customers whose birthday is today (SAST / UTC+2),
 adds 12 stamps to their loyalty card (triggering a free coffee reward),
-and sends them a happy birthday SMS via Twilio.
+and sends them a happy birthday WhatsApp message via Twilio.
 
 Runs daily at 6 AM SAST via GitHub Actions.
 """
@@ -27,7 +27,7 @@ LOOPY_BASE_URL = "https://api.loopyloyalty.com/v1"
 # Twilio
 TWILIO_ACCOUNT_SID = os.environ["TWILIO_ACCOUNT_SID"]
 TWILIO_AUTH_TOKEN = os.environ["TWILIO_AUTH_TOKEN"]
-TWILIO_FROM_NUMBER = os.environ["TWILIO_FROM_NUMBER"]
+TWILIO_WHATSAPP_NUMBER = os.environ["TWILIO_WHATSAPP_NUMBER"]
 
 # Timezone: South Africa Standard Time (UTC+2)
 SAST = timezone(timedelta(hours=2))
@@ -193,11 +193,11 @@ def add_birthday_stamps(card_id):
     raise last_error
 
 
-# --------------- Twilio SMS ---------------
+# --------------- Twilio WhatsApp ---------------
 
 
 def send_birthday_sms(phone_number, customer_name):
-    """Send a birthday SMS via Twilio."""
+    """Send a birthday WhatsApp message via Twilio."""
     client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
     first_name = customer_name.split()[0] if customer_name else "there"
@@ -205,11 +205,11 @@ def send_birthday_sms(phone_number, customer_name):
 
     message = client.messages.create(
         body=message_body,
-        from_=TWILIO_FROM_NUMBER,
-        to=phone_number,
+        from_=f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
+        to=f"whatsapp:{phone_number}",
     )
 
-    log.info("Sent SMS to %s (SID: %s)", phone_number, message.sid)
+    log.info("Sent WhatsApp message to %s (SID: %s)", phone_number, message.sid)
     return message.sid
 
 
@@ -217,7 +217,14 @@ def send_birthday_sms(phone_number, customer_name):
 
 
 def main():
-    log.info("=== Birthday SMS check started ===")
+    test_phone = os.environ.get("TEST_PHONE")
+    if test_phone:
+        log.info("=== TEST MODE: sending to %s ===", test_phone)
+        send_birthday_sms(test_phone, "Test User")
+        log.info("=== Test message sent ===")
+        return
+
+    log.info("=== Birthday WhatsApp check started ===")
 
     cards = fetch_all_cards()
     birthday_cards = get_birthday_customers(cards)
@@ -239,7 +246,7 @@ def main():
         try:
             # Add 12 stamps to trigger free coffee reward
             add_birthday_stamps(card_id)
-            # Send birthday SMS
+            # Send birthday WhatsApp message
             send_birthday_sms(phone, name)
             sent += 1
         except Exception as e:
