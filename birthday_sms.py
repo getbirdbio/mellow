@@ -165,7 +165,7 @@ def add_birthday_stamps(card_id):
     last_error = None
     for attempt in range(3):
         try:
-            timeout = 60 * (attempt + 1)  # 60s, 120s, 180s
+            timeout = 180 * (attempt + 1)  # 60s, 120s, 180s
             resp = requests.post(url, headers=headers, json={}, timeout=timeout)
             resp.raise_for_status()
             log.info("Added %d stamps to card %s", BIRTHDAY_STAMPS, card_id)
