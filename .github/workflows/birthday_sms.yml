@@ -32,5 +32,6 @@ jobs:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_WHATSAPP_NUMBER: ${{ secrets.TWILIO_WHATSAPP_NUMBER }}
+          TWILIO_CONTENT_SID: ${{ secrets.TWILIO_CONTENT_SID }}
           TEST_PHONE: ${{ inputs.test_phone }}
         run: python birthday_sms.py
