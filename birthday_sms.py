@@ -9,6 +9,7 @@ Runs daily at 6 AM SAST via GitHub Actions.
 """
 
 import os
+import json
 import jwt
 import time
 import requests
@@ -28,21 +29,13 @@ LOOPY_BASE_URL = "https://api.loopyloyalty.com/v1"
 TWILIO_ACCOUNT_SID = os.environ["TWILIO_ACCOUNT_SID"]
 TWILIO_AUTH_TOKEN = os.environ["TWILIO_AUTH_TOKEN"]
 TWILIO_WHATSAPP_NUMBER = os.environ["TWILIO_WHATSAPP_NUMBER"]
+TWILIO_CONTENT_SID = os.environ["TWILIO_CONTENT_SID"]
 
 # Timezone: South Africa Standard Time (UTC+2)
 SAST = timezone(timedelta(hours=2))
 
 # Number of stamps for a free coffee reward
 BIRTHDAY_STAMPS = 12
-
-# SMS message template - {name} will be replaced with the customer's first name
-BIRTHDAY_MESSAGE = (
-    "Happy Birthday, {name}! 🎂🎉 "
-    "To celebrate your special day, we've added a FREE coffee reward to your "
-    "Bird Coffee loyalty card! Just open your card in your wallet and show it "
-    "at any Bird Coffee location to redeem. "
-    "Enjoy your day! ☕ - The Bird Coffee Team"
-)
 
 # Page size for fetching cards from Loopy Loyalty
 PAGE_SIZE = 100
@@ -197,14 +190,14 @@ def add_birthday_stamps(card_id):
 
 
 def send_birthday_sms(phone_number, customer_name):
-    """Send a birthday WhatsApp message via Twilio."""
+    """Send a birthday WhatsApp message via Twilio approved content template."""
     client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
     first_name = customer_name.split()[0] if customer_name else "there"
-    message_body = BIRTHDAY_MESSAGE.format(name=first_name)
 
     message = client.messages.create(
-        body=message_body,
+        content_sid=TWILIO_CONTENT_SID,
+        content_variables=json.dumps({"1": first_name}),
         from_=f"whatsapp:{TWILIO_WHATSAPP_NUMBER}",
         to=f"whatsapp:{phone_number}",
     )
