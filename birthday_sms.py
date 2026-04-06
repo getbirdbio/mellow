@@ -217,6 +217,13 @@ def send_birthday_sms(phone_number, customer_name):
 
 
 def main():
+    test_phone = os.environ.get("TEST_PHONE")
+    if test_phone:
+        log.info("=== TEST MODE: sending to %s ===", test_phone)
+        send_birthday_sms(test_phone, "Test User")
+        log.info("=== Test message sent ===")
+        return
+
     log.info("=== Birthday WhatsApp check started ===")
 
     cards = fetch_all_cards()

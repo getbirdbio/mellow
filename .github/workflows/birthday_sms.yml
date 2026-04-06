@@ -4,7 +4,12 @@ on:
   schedule:
     # 6 AM SAST = 4 AM UTC (SAST is UTC+2)
     - cron: "0 4 * * *"
-  workflow_dispatch: # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+    inputs:
+      test_phone:
+        description: "Phone number to send a test message to (E.164 format, e.g. +27810331882). Leave blank for normal run."
+        required: false
+        default: ""
 
 jobs:
   send-birthday-whatsapp:
@@ -27,4 +32,5 @@ jobs:
           TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
           TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_WHATSAPP_NUMBER: ${{ secrets.TWILIO_WHATSAPP_NUMBER }}
+          TEST_PHONE: ${{ inputs.test_phone }}
         run: python birthday_sms.py
