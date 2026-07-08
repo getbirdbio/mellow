@@ -1,0 +1,56 @@
+name: Pizza Vote Blast (one-off)
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_phone:
+        description: "Send a single test message to this number only (E.164, e.g. +27810331882). Leave blank to target all customers."
+        required: false
+        default: ""
+      dry_run:
+        description: "Dry run: report recipient count without sending. Set to false to actually send."
+        type: choice
+        options:
+          - "true"
+          - "false"
+        default: "true"
+      offset:
+        description: "Skip this many recipients (for batching across days)"
+        required: false
+        default: "0"
+      limit:
+        description: "Max recipients this run (0 = all). Keep under your WhatsApp daily conversation limit."
+        required: false
+        default: "0"
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  send-pizza-vote-blast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install PyJWT requests twilio
+
+      - name: Run pizza vote blast script
+        env:
+          LOOPY_API_KEY: ${{ secrets.LOOPY_API_KEY }}
+          LOOPY_API_SECRET: ${{ secrets.LOOPY_API_SECRET }}
+          LOOPY_CAMPAIGN_ID: ${{ secrets.LOOPY_CAMPAIGN_ID }}
+          TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+          TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+          TWILIO_WHATSAPP_NUMBER: ${{ secrets.TWILIO_WHATSAPP_NUMBER }}
+          TWILIO_CONTENT_SID: ${{ secrets.TWILIO_CONTENT_SID }}
+          TWILIO_BLAST_CONTENT_SID: ${{ secrets.TWILIO_BLAST_CONTENT_SID }}
+          TEST_PHONE: ${{ inputs.test_phone }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          OFFSET: ${{ inputs.offset }}
+          LIMIT: ${{ inputs.limit }}
+        run: python pizza_vote_blast.py
