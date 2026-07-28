@@ -113,8 +113,19 @@ def get_card_stamps(card_id):
     headers = get_loopy_headers()
     url = f"{LOOPY_BASE_URL}/card/{card_id}"
 
-    resp = requests.get(url, headers=headers, timeout=30)
-    resp.raise_for_status()
+    last_error = None
+    for attempt in range(3):
+        try:
+            resp = requests.get(url, headers=headers, timeout=30)
+            resp.raise_for_status()
+            break
+        except requests.exceptions.RequestException as e:
+            last_error = e
+            log.warning("get_card_stamps attempt %d failed for card %s: %s", attempt + 1, card_id, e)
+            time.sleep(5 * (attempt + 1))
+    else:
+        raise last_error
+
     data = resp.json()
 
     card = data.get("card", {})
