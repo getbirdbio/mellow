@@ -79,8 +79,20 @@ def fetch_all_cards():
 
     while True:
         body = {"dt": {"start": start, "length": PAGE_SIZE}}
-        resp = requests.post(url, headers=headers, json=body, timeout=30)
-        resp.raise_for_status()
+
+        last_error = None
+        for attempt in range(3):
+            try:
+                resp = requests.post(url, headers=headers, json=body, timeout=30)
+                resp.raise_for_status()
+                break
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                log.warning("fetch_all_cards attempt %d failed (start=%d): %s", attempt + 1, start, e)
+                time.sleep(5 * (attempt + 1))
+        else:
+            raise last_error
+
         data = resp.json()
 
         cards = data.get("data", [])
